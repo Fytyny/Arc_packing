@@ -74,7 +74,7 @@ final public class Point {
         BigDecimal arX = around.getX();
         BigDecimal arY = around.getY();
         return new Point(
-                new BigDecimal(cos(degrees) * x.subtract(arX).doubleValue() - sin(degrees) * y.subtract(arY).doubleValue()),
+                new BigDecimal(cos(degrees) * x.subtract(arX).doubleValue()).subtract(new BigDecimal( sin(degrees) * y.subtract(arY).doubleValue())),
                 new BigDecimal(sin(degrees) * x.subtract(arX).doubleValue()).subtract(new BigDecimal(cos(degrees) * y.subtract(arY).doubleValue()))
         );
 
