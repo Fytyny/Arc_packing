@@ -320,8 +320,8 @@ public class Arc implements ArcInterface {
             BigDecimal subtractR = arcSettings.getRadius().subtract(arcSettings.getD().divide(BigDecimal.valueOf(2), DOUBLE_SCALE, ROUNDING_MODE));
             BigDecimal addR = arcSettings.getRadius().add(arcSettings.getD().divide(BigDecimal.valueOf(2), DOUBLE_SCALE, ROUNDING_MODE));
 
-            resultPoints.addAll(MathUtils.intersectingPointsOfSameRadiusCircles(oneMiddle, twoMiddle, subtractR));
-            resultPoints.addAll(MathUtils.intersectingPointsOfSameRadiusCircles(oneMiddle, twoMiddle, addR));
+            resultPoints.addAll(MathUtils.intersectingPointsOfTwoCircles(oneMiddle, subtractR, twoMiddle, subtractR));
+            resultPoints.addAll(MathUtils.intersectingPointsOfTwoCircles(oneMiddle, addR, twoMiddle, addR));
 
             resultPoints.addAll(MathUtils.intersectingPointsOfTwoCircles(oneMiddle,addR,twoMiddle,subtractR));
             resultPoints.addAll(MathUtils.intersectingPointsOfTwoCircles(oneMiddle,subtractR,twoMiddle,addR));

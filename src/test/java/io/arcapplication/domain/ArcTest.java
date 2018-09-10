@@ -95,4 +95,40 @@ public class ArcTest {
         boolean b = Arc.lineCircleCheck(lineStart, lineEnd, arc, settings.getRadius());
         Assert.assertFalse(b);
     }
+
+    @Test
+    public void cramerLineIntersectionNoIntersection(){
+        Point e = Point.getPointOf(0,0);
+        Point l = Point.getPointOf(5,5);
+        Point s = Point.getPointOf(11,12);
+        Point k = Point.getPointOf( 6, 6);
+        Assert.assertFalse(Arc.cramerLineIntersect(e,l,s,k));
+    }
+    @Test
+    public void cramerLineIntersectionNoIntersectionLineNotIntersectingAtAll(){
+        Point e = Point.getPointOf(0,0);
+        Point l = Point.getPointOf(5,5);
+        Point s = Point.getPointOf(0,1);
+        Point k = Point.getPointOf( 5, 6);
+        Assert.assertFalse(Arc.cramerLineIntersect(e,l,s,k));
+    }
+    @Test
+    public void cramerLineIntersectionNoIntersectionButOnSameLine(){
+        Point e = Point.getPointOf(0,0);
+        Point l = Point.getPointOf(5,5);
+        Point s = Point.getPointOf(11,11);
+        Point k = Point.getPointOf( 6, 6);
+        Assert.assertFalse(Arc.cramerLineIntersect(e,l,s,k));
+    }
+    @Test
+    public void cramerLineIntersectionAreIntersecing(){
+        Point e = Point.getPointOf(-1,-1);
+        Point l = Point.getPointOf(3,3);
+        Point s = Point.getPointOf(-3,3);
+        Point k = Point.getPointOf( 1, -1);
+        boolean b = Line2D.linesIntersect(e.getX().doubleValue(), e.getY().doubleValue(), l.getX().doubleValue(), l.getY().doubleValue(), s.getX().doubleValue(), s.getY().doubleValue(), k.getX().doubleValue(), k.getY().doubleValue());
+        Assert.assertTrue(b);
+        Assert.assertTrue(Arc.cramerLineIntersect(e,l,s,k));
+    }
+
 }
