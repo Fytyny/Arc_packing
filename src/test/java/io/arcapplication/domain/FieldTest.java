@@ -23,6 +23,7 @@ public class FieldTest {
         Assert.assertEquals(1,field.getArcs().size());
 
         Assert.assertFalse(field.addArc(arc));
-
+        System.out.println(" ");
+        Assert.assertTrue(field.addArc(new Arc (5,5,0,settings)));
     }
 }

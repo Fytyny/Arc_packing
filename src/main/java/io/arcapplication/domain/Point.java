@@ -69,14 +69,13 @@ final public class Point {
         Preconditions.checkArgument(point != null, "Around cannot be null");
       //  Preconditions.checkArgument(degr >=0 && degr <= 360, "Degrees value has to be between 0 and 360");
         double degrees = Math.toRadians(degr);
-        BigDecimal x = point.getX();
-        BigDecimal y = point.getY();
-        BigDecimal arX = around.getX();
-        BigDecimal arY = around.getY();
-        return new Point(
-                new BigDecimal(cos(degrees) * x.subtract(arX).doubleValue()).subtract(new BigDecimal( sin(degrees) * y.subtract(arY).doubleValue())),
-                new BigDecimal(sin(degrees) * x.subtract(arX).doubleValue()).subtract(new BigDecimal(cos(degrees) * y.subtract(arY).doubleValue()))
-        );
+        BigDecimal x = around.getX();
+        BigDecimal y = around.getY();
+        BigDecimal arX = point.getX();
+        BigDecimal arY = point.getY();
+        BigDecimal newX = new BigDecimal(cos(degrees) * arX.subtract(x).doubleValue()).subtract(new BigDecimal( sin(degrees) * arY.subtract(y).doubleValue()));
+        BigDecimal newY = new BigDecimal(sin(degrees) * arX.subtract(x).doubleValue()).add(new BigDecimal(cos(degrees) * arY.subtract(y).doubleValue()));
+        return around.movePoint(newX,newY);
 
     }
 

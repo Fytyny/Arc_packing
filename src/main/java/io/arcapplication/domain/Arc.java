@@ -322,7 +322,7 @@ public class Arc implements ArcInterface {
     public Point circleMiddlePoint() {
         if (circleMiddle == null) {
             BigDecimal r = arcSettings.getRadius();
-            Point var = point.movePoint(point.getX(), point.getY().subtract(r));
+            Point var = point.movePoint(BigDecimal.ZERO, r.negate());
             this.circleMiddle = Point.rotatePoint(var, point, this.fi.doubleValue());
         }
         return circleMiddle;
