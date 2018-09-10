@@ -11,7 +11,9 @@ public class ArcSettings {
         this.alfa = alfa;
         this.d = d;
     }
-
+    public ArcSettings(int radius, int alfa, int d) {
+        this(BigDecimal.valueOf(radius), BigDecimal.valueOf(alfa), BigDecimal.valueOf(d));
+    }
     public BigDecimal getRadius() {
         return radius;
     }
