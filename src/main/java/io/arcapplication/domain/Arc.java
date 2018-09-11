@@ -67,7 +67,7 @@ public class Arc implements ArcInterface {
 
         // two sections of a (one = middle)
 
-        BigDecimal f = normalizeDegrees(BigDecimal.valueOf(90).add(a.getFi()));
+        BigDecimal f = a.getFi();
         BigDecimal alfa = a.getArcSettings().getAlfa().divide(BigDecimal.valueOf(2), DOUBLE_SCALE, ROUNDING_MODE);
 
         Point aOneY = Point.rotatePoint(aROne, one, f.add(alfa).doubleValue());
@@ -78,7 +78,7 @@ public class Arc implements ArcInterface {
 
         //two sections of b (two = middle)
 
-        f = normalizeDegrees(BigDecimal.valueOf(90).add(b.getFi()));
+        f = b.getFi();
 
         Point bOneY = Point.rotatePoint(bROne, two, f.add(alfa).doubleValue());
         Point bOneX = Point.rotatePoint(bRTwo, two, f.add(alfa).doubleValue());
@@ -263,7 +263,7 @@ public class Arc implements ArcInterface {
     public static boolean lineCircleCheck(Point lineOne, Point lineTwo, Arc toIntersect, BigDecimal radius) {
         Point circleMiddle = toIntersect.circleMiddlePoint();
         Point ba = Point.vectorOf(lineOne, lineTwo);
-        Point ca = Point.vectorOf(lineOne, circleMiddle);
+        Point ca = Point.vectorOf(circleMiddle, lineOne);
 
         BigDecimal a = ba.getX().multiply(ba.getX()).add(ba.getY().multiply(ba.getY()));
         BigDecimal b = ca.getX().multiply(ba.getX()).add(ca.getY().multiply(ba.getY()));
@@ -283,36 +283,33 @@ public class Arc implements ArcInterface {
 
                 discriminant = BigDecimal.valueOf(Math.sqrt(discriminant.doubleValue()));
 
-                BigDecimal scalingFactor1 = b.negate().add(discriminant);
-                BigDecimal scalingFactor2 = b.negate().subtract(discriminant);
+                BigDecimal t1 = b.negate().add(discriminant).divide(BigDecimal.valueOf(2).multiply(a),AppConfig.DOUBLE_SCALE,AppConfig.ROUNDING_MODE);
+                BigDecimal t2 = b.negate().subtract(discriminant).divide(BigDecimal.valueOf(2).multiply(a),AppConfig.DOUBLE_SCALE,AppConfig.ROUNDING_MODE);
 
-                points.add(
-                        Point.getPointOf(lineOne.getX().subtract(ba.getX().multiply(scalingFactor1)),
-                                lineOne.getY().subtract(ba.getY().multiply(scalingFactor1)))
-                );
-
-                if (discriminant.compareTo(BigDecimal.ZERO) != 0) {
-                    points.add(
-                            Point.getPointOf(lineOne.getX().subtract(ba.getX().multiply(scalingFactor2)),
-                                    lineOne.getY().subtract(ba.getY().multiply(scalingFactor2)))
-                    );
+                if (t1.compareTo(BigDecimal.ZERO) >= 0 && t1.compareTo(BigDecimal.ONE) <= 0){
+                    return toIntersect.isPartOfArc(lineOne.addVector(Point.getPointOf(ba.getX().multiply(t1), ba.getY().multiply(t1))));
                 }
-                System.out.println(points);
-                for (Point point : points) {
-                    if (toIntersect.isPartOfArc(point)) return true;
+
+                else if(t2.compareTo(BigDecimal.ONE) >= 0 && t2.compareTo(BigDecimal.ONE)<=0){
+                    return toIntersect.isPartOfArc(lineOne.addVector(Point.getPointOf(ba.getX().multiply(t2), ba.getY().multiply(t2))));
                 }
 
                 return false;
             }
         } else{
-            if (b.compareTo(BigDecimal.ZERO) == 0 && c.compareTo(BigDecimal.ZERO) == 0) return true;
+            if (b.compareTo(BigDecimal.ZERO) == 0 && c.compareTo(BigDecimal.ZERO) == 0){
+                return true;
+            }
             else if (b.compareTo(BigDecimal.ZERO) != 0){
                 BigDecimal x = c.negate().divide(b, AppConfig.DOUBLE_SCALE, AppConfig.DOUBLE_SCALE);
-                BigDecimal y = b.multiply(x).add(c);
-                return toIntersect.isPartOfArc(Point.getPointOf(x, y));
+                if (x.compareTo(BigDecimal.ZERO) >= 0 && x.compareTo(BigDecimal.ONE) >= 0){
+                    return toIntersect.isPartOfArc(lineOne.addVector(Point.getPointOf(ba.getX().multiply(x), ba.getY().multiply(x))));
+
+                }
             }
             else return false;
         }
+        return false;
 
     }
 
@@ -329,8 +326,8 @@ public class Arc implements ArcInterface {
     }
 
     public static boolean computeIntersectingPoints(Arc one, Arc two) {
-        Preconditions.checkArgument(!one.getArcSettings().equals(two.arcSettings), "Arcs should have the same settings");
-        Preconditions.checkArgument(one.equals(two), "Arcs cant be the same");
+        Preconditions.checkArgument(one.getArcSettings().equals(two.arcSettings), "Arcs should have the same settings");
+        if (one.equals(two)) return true;
         ArcSettings arcSettings = one.getArcSettings();
         Point oneMiddle = one.circleMiddlePoint();
         Point twoMiddle = two.circleMiddlePoint();

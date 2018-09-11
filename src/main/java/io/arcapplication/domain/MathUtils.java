@@ -75,7 +75,7 @@ public class MathUtils {
     }
 
     public static List<Point> intersectingPointsOfTwoCircles(Point one, BigDecimal rOne, Point two, BigDecimal rTwo) {
-        Preconditions.checkArgument(one.equals(two) && rOne.compareTo(rTwo) == 0, "There is infinity number of intersecting points");
+        if(one.equals(two) && rOne.compareTo(rTwo) == 0) return Collections.emptyList();
         if (one.equals(two)) return Collections.emptyList();
         List<Point> points = new ArrayList<>(2);
         BigDecimal distance = MathUtils.distance(one, two);
