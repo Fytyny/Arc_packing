@@ -5,6 +5,7 @@ import io.arcapplication.AppConfig;
 import io.arcapplication.api.ArcInterface;
 import io.arcapplication.exception.ArcSettingsException;
 
+import java.awt.geom.Arc2D;
 import java.awt.geom.Line2D;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -12,6 +13,8 @@ import java.util.List;
 
 import static io.arcapplication.AppConfig.DOUBLE_SCALE;
 import static io.arcapplication.AppConfig.ROUNDING_MODE;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 
 public class Arc implements ArcInterface {
     private final BigDecimal fi;
@@ -41,7 +44,8 @@ public class Arc implements ArcInterface {
         return point;
     }
 
-    public static boolean areIntersecting(Arc a, Arc b) throws ArcSettingsException {
+    public static boolean areIntersecting(Arc a, Arc b) {
+        if (a.getPoint().equals(b.getPoint())) return true;
         Preconditions.checkArgument(a.getArcSettings().equals(b.arcSettings), "Arcs should have the same settings");
         return lineInter(a, b) || computeIntersectingPoints(a, b);
     }
@@ -59,10 +63,10 @@ public class Arc implements ArcInterface {
         Point two = b.circleMiddlePoint();
         BigDecimal divide = a.getArcSettings().getD().divide(BigDecimal.valueOf(2), DOUBLE_SCALE, ROUNDING_MODE);
 
-        Point aROne = one.addVector(Point.getPointOf(BigDecimal.ZERO, radius.add(divide)));
-        Point aRTwo = one.addVector(Point.getPointOf(BigDecimal.ZERO, radius.subtract(divide)));
-        Point bROne = two.addVector(Point.getPointOf(BigDecimal.ZERO, radius.add(divide)));
-        Point bRTwo = two.addVector(Point.getPointOf(BigDecimal.ZERO, radius.subtract(divide)));
+        Point aROne = one.addVector(Vector.vectorOf(BigDecimal.ZERO, radius.add(divide)));
+        Point aRTwo = one.addVector(Vector.vectorOf(BigDecimal.ZERO, radius.subtract(divide)));
+        Point bROne = two.addVector(Vector.vectorOf(BigDecimal.ZERO, radius.add(divide)));
+        Point bRTwo = two.addVector(Vector.vectorOf(BigDecimal.ZERO, radius.subtract(divide)));
 
 
         // two sections of a (one = middle)
@@ -113,10 +117,10 @@ public class Arc implements ArcInterface {
                 lineCircleCheck(bTwoY, bTwoX, a, radius.subtract(divide))) {
             return true;
         }
-        return quickLineCheck(aOneX, aOneY, bOneX, bOneY) ||
-                quickLineCheck(aOneX, aOneY, bTwoX, bTwoY) ||
-                quickLineCheck(aTwoX, aTwoY, bOneX, bOneY) ||
-                quickLineCheck(aTwoX, aTwoY, bTwoX, bTwoY);
+        return doIntersect(aOneX, aOneY, bOneX, bOneY) ||
+                doIntersect(aOneX, aOneY, bTwoX, bTwoY) ||
+                doIntersect(aTwoX, aTwoY, bOneX, bOneY) ||
+                doIntersect(aTwoX, aTwoY, bTwoX, bTwoY);
     }
 
     @Deprecated
@@ -137,8 +141,8 @@ public class Arc implements ArcInterface {
      */
     public static boolean cramerLineIntersect(Point e, Point l, Point s, Point k) {
         if (e.equals(s) || e.equals(k) || l.equals(s) || l.equals(k)) return true;
-        Point d = Point.vectorOf(e, l);
-        Point j = Point.vectorOf(s, k);
+        Vector d = Vector.vectorOf(e, l);
+        Vector j = Vector.vectorOf(s, k);
 
         BigDecimal eq1 = s.getX().subtract(e.getX());
         BigDecimal eq2 = s.getY().subtract(e.getY());
@@ -151,22 +155,74 @@ public class Arc implements ArcInterface {
             if (uDet.compareTo(BigDecimal.ZERO) == 0 && iDet.compareTo(BigDecimal.ZERO) == 0) {
                 BigDecimal scalar1 = getScalar(s, e, d);
                 BigDecimal scalar = getScalar(k, e, d);
-                return ((scalar1.compareTo(BigDecimal.ZERO) >= 0 && scalar1.compareTo(BigDecimal.ONE) <= 0) ||
+                boolean res = ((scalar1.compareTo(BigDecimal.ZERO) >= 0 && scalar1.compareTo(BigDecimal.ONE) <= 0) ||
                         (scalar.compareTo(BigDecimal.ZERO) >= 0 && scalar.compareTo(BigDecimal.ONE) <= 0)) ||
                         ((scalar.compareTo(BigDecimal.ZERO) <= 0 && scalar1.compareTo(BigDecimal.ONE) >= 0)
                                 || (scalar1.compareTo(BigDecimal.ZERO) <= 0 && scalar.compareTo(BigDecimal.ONE) >= 0
                         ));
+                return res;
             }
             return false;
         } else {
             BigDecimal u = uDet.divide(matrixDet, AppConfig.DOUBLE_SCALE, AppConfig.ROUNDING_MODE);
             BigDecimal i = iDet.divide(matrixDet, AppConfig.DOUBLE_SCALE, AppConfig.ROUNDING_MODE);
-            return u.compareTo(BigDecimal.ZERO) >= 0 && u.compareTo(BigDecimal.ONE) <= 0 &&
+            boolean b = u.compareTo(BigDecimal.ZERO) >= 0 && u.compareTo(BigDecimal.ONE) <= 0 &&
                     i.compareTo(BigDecimal.ZERO) >= 0 && i.compareTo(BigDecimal.ONE) <= 0;
+            return b;
         }
 
     }
 
+    // Given three colinear points p, q, r, the function checks if
+// point q lies on line segment 'pr'
+    private static boolean onSegment(Point p, Point q, Point r)
+    {
+        if (Double.compare(q.getX().doubleValue(),max(p.getX().doubleValue(), r.getX().doubleValue())) <= 0 && Double.compare(q.getX().doubleValue() , min(p.getX().doubleValue(), r.getX().doubleValue())) >= 0 &&
+                Double.compare(q.getY().doubleValue(),max(p.getY().doubleValue(), r.getY().doubleValue())) <= 0 && Double.compare(q.getY().doubleValue(), min(p.getY().doubleValue(), r.getY().doubleValue())) >= 0){
+            return true;
+        }
+        return false;
+    }
+    private static int orientation(Point p, Point q, Point r)
+    {
+        // See https://www.geeksforgeeks.org/orientation-3-ordered-points/
+        // for details of below formula.
+        BigDecimal val = (q.getY().subtract( p.getY())).multiply(r.getX().subtract(q.getX())).subtract(
+                q.getX().subtract(p.getX()).multiply(r.getY().subtract(q.getY())));
+
+        if (val.compareTo(BigDecimal.ZERO) == 0) return 0;  // colinear
+
+        return (val.compareTo(BigDecimal.ZERO) > 0)? 1: 2; // clock or counterclock wise
+    }
+
+    private static boolean doIntersect(Point p1, Point q1, Point p2, Point q2)
+    {
+        // Find the four orientations needed for general and
+        // special cases
+        int o1 = orientation(p1, q1, p2);
+        int o2 = orientation(p1, q1, q2);
+        int o3 = orientation(p2, q2, p1);
+        int o4 = orientation(p2, q2, q1);
+
+        // General case
+        if (o1 != o2 && o3 != o4)
+            return true;
+
+        // Special Cases
+        // p1, q1 and p2 are colinear and p2 lies on segment p1q1
+        if (o1 == 0 && onSegment(p1, p2, q1)) return true;
+
+        // p1, q1 and q2 are colinear and q2 lies on segment p1q1
+        if (o2 == 0 && onSegment(p1, q2, q1)) return true;
+
+        // p2, q2 and p1 are colinear and p1 lies on segment p2q2
+        if (o3 == 0 && onSegment(p2, p1, q2)) return true;
+
+        // p2, q2 and q1 are colinear and q1 lies on segment p2q2
+        if (o4 == 0 && onSegment(p2, q1, q2)) return true;
+
+        return false; // Doesn't fall in any of the above cases
+    }
     /**
      * Get u from E + u * D = X when there is a result for sure
      *
@@ -175,7 +231,7 @@ public class Arc implements ArcInterface {
      * @param d
      * @return
      */
-    public static BigDecimal getScalar(Point x, Point e, Point d) {
+    public static BigDecimal getScalar(Point x, Point e, Vector d) {
         if (d.getX().compareTo(BigDecimal.ZERO) != 0) {
             return x.getX().subtract(e.getX()).divide(d.getX(), AppConfig.DOUBLE_SCALE, AppConfig.ROUNDING_MODE);
         } else if (d.getY().compareTo(BigDecimal.ZERO) != 0) {
@@ -199,10 +255,10 @@ public class Arc implements ArcInterface {
      */
     @Deprecated
     public static boolean quickLineCircleCheck(Point lineOne, Point lineTwo, Point circleMiddle, BigDecimal radius) {
-        Point p12 = Point.vectorOf(lineOne, lineTwo);
-        Point norm = Point.normalizeVector(p12);
+        Vector p12 = Vector.vectorOf(lineOne, lineTwo);
+        Vector norm = Vector.normalizeVector(p12);
 
-        Point p1c = Point.vectorOf(lineOne, circleMiddle);
+        Vector p1c = Vector.vectorOf(lineOne, circleMiddle);
         //cross product
         BigDecimal v = norm.getX().multiply(p1c.getY()).subtract(
                 norm.getY().multiply(p1c.getX())
@@ -262,17 +318,18 @@ public class Arc implements ArcInterface {
      */
     public static boolean lineCircleCheck(Point lineOne, Point lineTwo, Arc toIntersect, BigDecimal radius) {
         Point circleMiddle = toIntersect.circleMiddlePoint();
-        Point ba = Point.vectorOf(lineOne, lineTwo);
-        Point ca = Point.vectorOf(circleMiddle, lineOne);
+        Vector d = Vector.vectorOf(lineOne, lineTwo);
+        Vector f = Vector.vectorOf(circleMiddle, lineOne);
 
-        BigDecimal a = ba.getX().multiply(ba.getX()).add(ba.getY().multiply(ba.getY()));
-        BigDecimal b = ca.getX().multiply(ba.getX()).add(ca.getY().multiply(ba.getY()));
-        BigDecimal c = ca.getX().multiply(ca.getX()).add(ca.getY().multiply(ca.getY())).subtract(radius.pow(2));
+        BigDecimal a = d.getX().multiply(d.getX()).add(d.getY().multiply(d.getY()));
+
+        BigDecimal b = BigDecimal.valueOf(2).multiply(f.getX().multiply(d.getX()).add(f.getY().multiply(d.getY())));
+        BigDecimal c = f.getX().multiply(f.getX()).add(f.getY().multiply(f.getY())).subtract(radius.pow(2));
         if (a.compareTo(BigDecimal.ZERO) != 0) {
 
-            b = b.divide(a, DOUBLE_SCALE, ROUNDING_MODE);
+            //b = b.divide(a, DOUBLE_SCALE, ROUNDING_MODE);
 
-            BigDecimal discriminant = b.pow(2).subtract(c.divide(a, DOUBLE_SCALE, ROUNDING_MODE));
+            BigDecimal discriminant = b.pow(2).subtract(BigDecimal.valueOf(4).multiply(c).multiply(a));
 
             if (discriminant.compareTo(BigDecimal.ZERO) < 0) return false;
 
@@ -287,11 +344,16 @@ public class Arc implements ArcInterface {
                 BigDecimal t2 = b.negate().subtract(discriminant).divide(BigDecimal.valueOf(2).multiply(a),AppConfig.DOUBLE_SCALE,AppConfig.ROUNDING_MODE);
 
                 if (t1.compareTo(BigDecimal.ZERO) >= 0 && t1.compareTo(BigDecimal.ONE) <= 0){
-                    return toIntersect.isPartOfArc(lineOne.addVector(Point.getPointOf(ba.getX().multiply(t1), ba.getY().multiply(t1))));
+                    Point p = lineOne.addVector(Vector.vectorOf(d.getX().multiply(t1), d.getY().multiply(t1)));
+                    boolean partOfArc = toIntersect.isPartOfArc(p);
+                    if (partOfArc) return partOfArc;
+
                 }
 
-                else if(t2.compareTo(BigDecimal.ONE) >= 0 && t2.compareTo(BigDecimal.ONE)<=0){
-                    return toIntersect.isPartOfArc(lineOne.addVector(Point.getPointOf(ba.getX().multiply(t2), ba.getY().multiply(t2))));
+                if(t2.compareTo(BigDecimal.ZERO) >= 0 && t2.compareTo(BigDecimal.ONE)<=0){
+                    Point p = lineOne.addVector(Vector.vectorOf(d.getX().multiply(t2), d.getY().multiply(t2)));
+                    boolean partOfArc = toIntersect.isPartOfArc(p);
+                    if (partOfArc) return partOfArc;
                 }
 
                 return false;
@@ -303,7 +365,7 @@ public class Arc implements ArcInterface {
             else if (b.compareTo(BigDecimal.ZERO) != 0){
                 BigDecimal x = c.negate().divide(b, AppConfig.DOUBLE_SCALE, AppConfig.DOUBLE_SCALE);
                 if (x.compareTo(BigDecimal.ZERO) >= 0 && x.compareTo(BigDecimal.ONE) >= 0){
-                    return toIntersect.isPartOfArc(lineOne.addVector(Point.getPointOf(ba.getX().multiply(x), ba.getY().multiply(x))));
+                    return toIntersect.isPartOfArc(lineOne.addVector(Vector.vectorOf(d.getX().multiply(x), d.getY().multiply(x))));
 
                 }
             }
@@ -319,15 +381,13 @@ public class Arc implements ArcInterface {
     public Point circleMiddlePoint() {
         if (circleMiddle == null) {
             BigDecimal r = arcSettings.getRadius();
-            Point var = point.movePoint(BigDecimal.ZERO, r.negate());
+            Point var = point.addVector(Vector.vectorOf(BigDecimal.ZERO, r.negate()));
             this.circleMiddle = Point.rotatePoint(var, point, this.fi.doubleValue());
         }
         return circleMiddle;
     }
 
-    public static boolean computeIntersectingPoints(Arc one, Arc two) {
-        Preconditions.checkArgument(one.getArcSettings().equals(two.arcSettings), "Arcs should have the same settings");
-        if (one.equals(two)) return true;
+    private static boolean computeIntersectingPoints(Arc one, Arc two) {
         ArcSettings arcSettings = one.getArcSettings();
         Point oneMiddle = one.circleMiddlePoint();
         Point twoMiddle = two.circleMiddlePoint();
@@ -363,7 +423,6 @@ public class Arc implements ArcInterface {
                 return arc.getArcSettings().equals(this.arcSettings)
                         && arc.getFi().equals(this.fi)
                         && arc.getPoint().equals(this.point);
-
             }
             return false;
         }
@@ -387,20 +446,17 @@ public class Arc implements ArcInterface {
     public boolean isPartOfArc(Point p) {
         if (circleMiddle == null) circleMiddle = circleMiddlePoint();
         BigDecimal distance = MathUtils.distance(p, circleMiddle);
-        BigDecimal d = arcSettings.getD();
+        BigDecimal d = arcSettings.getD().divide(BigDecimal.valueOf(2),AppConfig.DOUBLE_SCALE,AppConfig.ROUNDING_MODE);
         BigDecimal radius = this.arcSettings.getRadius();
 
         if (distance.compareTo(radius.add(d)) > 0) return false;
         else if (distance.compareTo(radius.subtract(d)) < 0) return false;
         else {
-            Point point = Point.vectorOf(circleMiddle, p);
-            BigDecimal degree = findDegree(point.getX(), point.getY());
-            System.out.println(point);
-            System.out.println(degree);
+            Vector vector = Vector.vectorOf(circleMiddle, p);
+            BigDecimal degree = normalizeDegrees(findDegree(vector.getX(), vector.getY()));
             BigDecimal rotateByFi = normalizeDegrees(BigDecimal.valueOf(90).add(this.fi));
             BigDecimal alfaInHalf = arcSettings.getAlfa().divide(BigDecimal.valueOf(2), DOUBLE_SCALE, ROUNDING_MODE);
-            System.out.println(alfaInHalf);
-            boolean betweenDegrees = isBetweenDegrees(degree, rotateByFi.subtract(alfaInHalf), normalizeDegrees(rotateByFi.add(alfaInHalf)));
+            boolean betweenDegrees = isBetweenDegrees(degree, normalizeDegrees(rotateByFi.subtract(alfaInHalf)), normalizeDegrees(rotateByFi.add(alfaInHalf)));
 
             return betweenDegrees;
         }
@@ -410,16 +466,18 @@ public class Arc implements ArcInterface {
         if (start.compareTo(end) < 0) {
             return degree.compareTo(start) >= 0 && degree.compareTo(end) <= 0;
         } else {
-            return degree.compareTo(start) <= 0 && degree.compareTo(end) >= 0;
+            return degree.compareTo(start) <= 0 && degree.compareTo(end) <= 0 || degree.compareTo(start) >=0 && degree.compareTo(end)>=0;
         }
     }
 
     public static BigDecimal normalizeDegrees(BigDecimal degrees) {
-        if (degrees.compareTo(BigDecimal.valueOf(360)) > 0) {
+        if (degrees.compareTo(BigDecimal.valueOf(360)) == 0){
+            return BigDecimal.ZERO;
+        }
+        else if (degrees.compareTo(BigDecimal.valueOf(360)) > 0) {
             return degrees.subtract(BigDecimal.valueOf(360));
         } else if (degrees.compareTo(BigDecimal.valueOf(0)) < 0) {
             return degrees.add(BigDecimal.valueOf(360));
-
         } else {
             return degrees;
         }

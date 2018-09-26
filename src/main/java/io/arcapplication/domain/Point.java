@@ -10,6 +10,7 @@ import io.arcapplication.AppConfig;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -25,8 +26,8 @@ final public class Point {
 
 
     private Point(BigDecimal x, BigDecimal y) {
-        this.x = x.setScale(5,BigDecimal.ROUND_FLOOR);;
-        this.y = y.setScale(5,BigDecimal.ROUND_FLOOR);;
+        this.x = x.setScale(AppConfig.DOUBLE_SCALE,AppConfig.ROUNDING_MODE);;
+        this.y = y.setScale(AppConfig.DOUBLE_SCALE, AppConfig.ROUNDING_MODE);
     }
 
     public static Point getPointOf(int x, int y) {
@@ -43,12 +44,7 @@ final public class Point {
         return new Point(x,y);
     }
 
-    public static Point normalizeVector(Point p){
-        BigDecimal len = BigDecimal.valueOf(Math.sqrt(p.getX().pow(2).add(p.getY().pow(2)).doubleValue()));
 
-        return Point.getPointOf(p.getX().divide(len,DOUBLE_SCALE,ROUNDING_MODE),p.getY().divide(len, DOUBLE_SCALE, ROUNDING_MODE));
-
-    }
 
     @Override
     public boolean equals(Object obj) {
@@ -67,43 +63,21 @@ final public class Point {
     public static Point rotatePoint(Point point, Point around, double degr){
         Preconditions.checkArgument(point != null, "Point cannot be null");
         Preconditions.checkArgument(point != null, "Around cannot be null");
-      //  Preconditions.checkArgument(degr >=0 && degr <= 360, "Degrees value has to be between 0 and 360");
         double degrees = Math.toRadians(degr);
         BigDecimal x = around.getX();
         BigDecimal y = around.getY();
         BigDecimal arX = point.getX();
         BigDecimal arY = point.getY();
-        BigDecimal newX = new BigDecimal(cos(degrees) * arX.subtract(x).doubleValue()).subtract(new BigDecimal( sin(degrees) * arY.subtract(y).doubleValue()));
-        BigDecimal newY = new BigDecimal(sin(degrees) * arX.subtract(x).doubleValue()).add(new BigDecimal(cos(degrees) * arY.subtract(y).doubleValue()));
-        return around.movePoint(newX,newY);
-
+        BigDecimal cosVal = BigDecimal.valueOf(cos(degrees)).setScale(AppConfig.DOUBLE_SCALE, RoundingMode.DOWN);
+        BigDecimal sinVal = BigDecimal.valueOf(sin(degrees)).setScale(AppConfig.DOUBLE_SCALE, RoundingMode.DOWN);
+        BigDecimal newX = cosVal.multiply(arX.subtract(x)).subtract(sinVal.multiply(arY.subtract(y)));
+        BigDecimal newY = sinVal.multiply(arX.subtract(x)).add(cosVal.multiply(arY.subtract(y)));
+        Vector vector = Vector.vectorOf(newX, newY);
+        return around.addVector(vector);
     }
 
-    public Point movePoint(BigDecimal x, BigDecimal y){
-        Preconditions.checkArgument(x != null, "X cannot be null");
-        Preconditions.checkArgument(y != null, "Y cannot be null");
-        return getPointOf(this.x.add(x),this.y.add(y));
-    }
 
-    public static Point vectorOf(Point a, Point b){
-        return Point.getPointOf(b.getX().subtract(a.getX()),b.getY().subtract(a.getY()));
-    }
-
-    /**
-     * Method scale vector from argument to radius and returns a point r away from one of the points in the direction to another point.
-     * @param a point a - middle of circle a
-     * @param b point b - middle of circle b
-     * @param vector vector b-a
-     * @param radius
-     * @return
-     */
-    public static Point scaleDownVector(Point a,Point b, Point vector, BigDecimal radius){
-        BigDecimal distance = MathUtils.distance(a, b);
-        BigDecimal scale = radius.divide(distance, DOUBLE_SCALE, ROUNDING_MODE);
-        return Point.getPointOf(vector.getX().multiply(scale),vector.getY().multiply(scale));
-    }
-
-    public Point addVector(Point vector){
+    public Point addVector(Vector vector){
         return Point.getPointOf(this.getX().add(vector.getX()),this.getY().add(vector.getY()));
     }
 

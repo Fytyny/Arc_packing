@@ -4,6 +4,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 
 import static com.sun.org.apache.xalan.internal.lib.ExsltMath.cos;
@@ -27,6 +28,12 @@ public class PointTest {
 
     }
 
+
+    @Test
+    public void bigDecimalTest(){
+        BigDecimal bigDecimal = BigDecimal.valueOf(-1.45).setScale(1, RoundingMode.HALF_EVEN);
+        System.out.println(bigDecimal);
+    }
     @Test
     public void degreesTest(){
         double theta = (double) 2/5;
@@ -42,8 +49,8 @@ public class PointTest {
         Point b = Point.getPointOf(5,0);
         BigDecimal distance = MathUtils.distance(a, b);
         System.out.println(distance);
-        Point point = Point.vectorOf(b, a);
-        Point point1 = Point.scaleDownVector(b,a, point, BigDecimal.valueOf(rad));
+        Vector point = Vector.vectorOf(b, a);
+        Vector point1 = Vector.scaleVector(distance, point, BigDecimal.valueOf(rad));
         a = b.addVector(point1);
         System.out.println(a);
 

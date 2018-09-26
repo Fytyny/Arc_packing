@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import io.arcapplication.AppConfig;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -63,11 +64,11 @@ public class MathUtils {
             BigDecimal divide = distance.divide(BigDecimal.valueOf(2), 5, BigDecimal.ROUND_HALF_EVEN);
             double acos = Math.acos(divide.divide(radius, 5, BigDecimal.ROUND_HALF_EVEN).doubleValue());
             double degrees = Math.toDegrees(acos);
-            Point vector = Point.vectorOf(one, two);
-            vector = Point.scaleDownVector(one, two, vector, radius);
-            vector = one.addVector(vector);
-            Point point1 = Point.rotatePoint(vector, one, degrees);
-            Point point2 = Point.rotatePoint(vector, one, -degrees);
+            Vector vector = Vector.vectorOf(one, two);
+            vector = vector.scaleVector(MathUtils.distance(one,two), vector, radius);
+            Point oneAfterVector= one.addVector(vector);
+            Point point1 = Point.rotatePoint(oneAfterVector, one, degrees);
+            Point point2 = Point.rotatePoint(oneAfterVector, one, -degrees);
             points.add(point1);
             points.add(point2);
             return points;
@@ -84,17 +85,24 @@ public class MathUtils {
         if (compareTo > 0) { //No mutual points
             return points;
         } else if (compareTo == 0) {  //one mutual point
-            points.add(MathUtils.centerOfSection(one, two,scale));
+
+            Vector vector = Vector.vectorOf(one, two);
+            vector = Vector.scaleVector(distance,vector, rOne);
+
+            points.add(one.addVector(vector));
             return points;
         } else { //two points
-            BigDecimal divide = distance.multiply(scale);
-            double acos = Math.acos(divide.divide(rOne, AppConfig.DOUBLE_SCALE,AppConfig.ROUNDING_MODE).doubleValue());
+            BigDecimal arcosVal = distance.pow(2).add(rTwo.pow(2)).subtract(rOne.pow(2)).divide(
+                    BigDecimal.valueOf(2).multiply(distance).multiply(rTwo), AppConfig.DOUBLE_SCALE,AppConfig.ROUNDING_MODE
+            );
+            double acos = BigDecimal.valueOf(Math.acos(arcosVal.doubleValue())).setScale(16, RoundingMode.DOWN).doubleValue();
             double degrees = Math.toDegrees(acos);
-            Point vector = Point.vectorOf(one, two);
-            vector = Point.scaleDownVector(one, two, vector, rOne);
-            vector = one.addVector(vector);
-            Point point1 = Point.rotatePoint(vector, one, degrees);
-            Point point2 = Point.rotatePoint(vector, one, -degrees);
+            Vector vector = Vector.vectorOf(two, one);
+            vector = vector.scaleVector(MathUtils.distance(one,two), vector, rOne);
+            Point twoAfterVector = two.addVector(vector);
+            System.out.println(twoAfterVector);
+            Point point1 = Point.rotatePoint(twoAfterVector, two, degrees);
+            Point point2 = Point.rotatePoint(twoAfterVector, two, -degrees);
             points.add(point1);
             points.add(point2);
             return points;
